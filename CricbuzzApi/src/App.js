@@ -12,21 +12,16 @@ function App() {
       "X-RapidAPI-Host": "cricbuzz-cricket.p.rapidapi.com",
     },
   };
-
+  
+  //const isMounted = useRef(false);
   const [teamsList, setTeamsList] = useState([]);
-  const [teamId, setTeamId] = useState("");
-  const [players , setPlayers] = useState([]);
-  const isMounted = useRef(false);
-  const isMounted1 = useRef(false);
-
-  const handleSelect = (e) => {
-    console.log("Team Id = ", e);
-    setTeamId(e);
-  };
+  const [team , setTeam] = useState({
+    teamId : "",
+    playerDetails : []
+  });
 
   useEffect(() => {
     const url = "https://cricbuzz-cricket.p.rapidapi.com/teams/v1/international";
-
     fetch(url, options)
       .then((response) => {
         return response.json();
@@ -39,48 +34,51 @@ function App() {
       });
   }, []);
 
-  useEffect(() => {
-    if(isMounted.current && teamId.length !== 0){
+  async function GetTeamData(teamId){
+    try{
+      console.log("Fetching Team Players of TeamId = " , teamId);
       const url = `https://cricbuzz-cricket.p.rapidapi.com/teams/v1/${teamId}/players`;
-      fetch(url, options)
-        .then((response) => {
-          return response.json();
-        })
-        .then(async (data) => {
-          const filtered = data.player.filter((value) => {
-            return Object.keys(value).length > 2;
-          });
-          setPlayers(filtered);
-        })
-        .catch((err) => {
-          console.log(err);
-        });
-    }
-    else{
-      isMounted.current = true;
-    }  
-  }, [teamId])
+      const response = await fetch(url, options);
+      const data = await response.json();
+      const players = await data.player.filter((value) => {
+        return Object.keys(value).length > 2;
+      });
 
+      for(let i =0; i<players.length ; i++){
+        
+        try{
+          let url = `https://cricbuzz-cricket.p.rapidapi.com/img/v1/i1/c${players[i].imageId}/i.jpg`;
+          const response = await fetch(url , options);
+          const img = await response.blob();
+          const imgUrl = URL.createObjectURL(img);
 
-
-  useEffect(async () => {
-
-    let Urls = []
-    if(isMounted1.current && players.length !==0)
-    {
-      for(let i=0 ; i< players.length ; i++)
-      {
-        let url = `https://cricbuzz-cricket.p.rapidapi.com/img/v1/i1/c${players[i].imageId}/i.jpg`;
-        Urls.push(fetch(url , options));
+          players[i]['imageUrl'] = imgUrl;
+          const data = players[i];
+          setTeam((prev) => ({
+            ...prev,
+            playerDetails : [...prev.playerDetails , data]
+          }))
+        }
+        catch(err){
+          console.log("Error while Fetching Player Photo" , err);
+        }   
       }
-
-
-    }else{
-      isMounted1.current = true;
     }
-    
-  }, [players])
+    catch(err){
+      console.log("Error while Fetching Team Players:" , err);
+    }  
+  }
 
+  const handleSelect = (e) => {
+    console.log("Team Id = ", e);
+    setTeam(() => ({
+      teamId : e,
+      playerDetails : []
+    }))
+    GetTeamData(e);
+  };
+
+  
   return (
     <div className="App">
       <div className="map">
@@ -89,9 +87,9 @@ function App() {
           itemName="Team Names"
           onSelect={handleSelect}
         />
-        <div className="container">
+          <div className="container">
         {
-          players.length>0 ? <Profile team = {players} /> : <p>Select Any Team Name</p>
+          team.playerDetails.length>0 ? <Profile team = {team.playerDetails} /> : <p>Select Any Team Name</p>
         }
         </div>
       </div>   
@@ -100,32 +98,3 @@ function App() {
 }
 export default App;
 
-
-/*
-<Button onClick={handleClick} variant="primary">
-  Submit
-</Button>;
-
-  useEffect(() => {
-    if(isMounted1.current && players.length !==0){
-      for(let i=0 ; i< players.length ; i++){
-        const url = `https://cricbuzz-cricket.p.rapidapi.com/img/v1/i1/c${players[i].imageId}/i.jpg`;
-        fetch(url, options)
-          .then((response) => {
-            return response.blob();
-          })
-          .then((image) => {
-            const imgUrl = URL.createObjectURL(image);
-            players[i]['imageUrl'] = imgUrl;
-          })
-          .catch((err) => {
-            console.log(err);
-          });
-      }
-    }
-    else{
-      isMounted1.current = true;
-    }
-  }, [players])
-
-  */
